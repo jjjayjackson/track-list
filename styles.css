@@ -1,0 +1,122 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: black;
+  color: white;
+  min-height: 100%;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+}
+
+.main {
+  width: 100%;
+  max-width: 900px;
+  padding: 32px 20px 140px;
+}
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.input-section {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(500px, calc(100% - 24px));
+  background: transparent;
+  border: 1px solid #2a3139;
+  border-radius: 18px;
+}
+
+#Input {
+  width: 100%;
+  border: 2px solid white;
+  background: black;
+  color: white;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 1rem;
+  outline: none;
+}
+
+#Input::placeholder {
+  color: white;
+  opacity: 1;
+}
+
+#Input:focus {
+  border-color: white;
+}
+
+.track-row {
+  display: grid;
+  grid-template-columns: 42px 1fr 1fr 3fr 50px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #2a3139;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.track-row.dragging {
+  opacity: 0.45;
+}
+
+.track-cell {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.drag-handle {
+  background: transparent;
+  color: white;
+  border: none;
+  font-size: 1.1rem;
+  cursor: grab;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.name-cell {
+  cursor: pointer;
+}
+
+.name-cell.editing {
+  outline: 1px solid white;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.delete-btn {
+  background: transparent;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.delete-btn:hover {
+  background: #222831;
+}
