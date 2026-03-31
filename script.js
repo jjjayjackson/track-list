@@ -1,223 +1,305 @@
 const trackInput = document.getElementById("Input");
 const queue = document.getElementById("queue");
+const totalCount = document.getElementById("totalCount");
+const monthTimeline = document.getElementById("monthTimeline");
 
 const STORAGE_KEY = "trackQueue";
 
-let draggedRow = null;
+let tracks = [];
+let draggedTrackId = null;
 let xKeyHeld = false;
 
 function loadTracks() {
-  const savedTracks = localStorage.getItem(STORAGE_KEY);
-  if (!savedTracks) return;
+  const saved = localStorage.getItem(STORAGE_KEY);
+
+  if (!saved) {
+    renderTracks();
+    return;
+  }
 
   try {
-    const tracks = JSON.parse(savedTracks);
+    const parsed = JSON.parse(saved);
 
-    tracks.forEach((track) => {
-      createTrackRow(track.date, track.time, track.name);
-    });
-  } catch (e) {
-    console.error("Failed to load tracks from localStorage", e);
+    tracks = parsed.map((t) => ({
+      id: t.id || crypto.randomUUID(),
+      name: t.name || "",
+      createdAt: t.createdAt || new Date().toISOString()
+    }));
+
+    saveTracks();
+    renderTracks();
+  } catch {
     localStorage.removeItem(STORAGE_KEY);
+    tracks = [];
+    renderTracks();
   }
-}
-
-function createTrackRow(date, time, name) {
-  const trackRow = document.createElement("div");
-  trackRow.className = "track-row";
-  trackRow.draggable = true;
-
-  const dragCell = document.createElement("button");
-  dragCell.className = "drag-handle";
-  dragCell.textContent = "☰";
-  dragCell.title = "Drag to reorder";
-
-  const dateCell = document.createElement("div");
-  dateCell.className = "track-cell";
-  dateCell.textContent = date;
-
-  const timeCell = document.createElement("div");
-  timeCell.className = "track-cell";
-  timeCell.textContent = time;
-
-  const nameCell = document.createElement("div");
-  nameCell.className = "track-cell name-cell";
-  nameCell.textContent = name;
-  nameCell.title = "Click to search and remove. Hold X and click to edit.";
-
-  nameCell.addEventListener("click", () => {
-    if (nameCell.isContentEditable) return;
-
-    if (xKeyHeld) {
-      startEditing(nameCell);
-      return;
-    }
-
-    const query = encodeURIComponent(nameCell.textContent.trim());
-    const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${query}`;
-    window.open(youtubeSearchUrl, "_blank");
-
-    trackRow.remove();
-    saveTracks();
-  });
-
-  nameCell.addEventListener("blur", () => {
-    if (nameCell.isContentEditable) {
-      finishEditing(nameCell);
-    }
-  });
-
-  nameCell.addEventListener("keydown", (event) => {
-    if (!nameCell.isContentEditable) return;
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      nameCell.blur();
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      cancelEditing(nameCell, name);
-    }
-  });
-
-  const deleteCell = document.createElement("button");
-  deleteCell.className = "track-cell delete-btn";
-  deleteCell.textContent = "X";
-  deleteCell.addEventListener("click", () => {
-    trackRow.remove();
-    saveTracks();
-  });
-
-  setupDragEvents(trackRow);
-
-  trackRow.append(dragCell, dateCell, timeCell, nameCell, deleteCell);
-  queue.appendChild(trackRow);
-}
-
-function startEditing(nameCell) {
-  nameCell.dataset.originalValue = nameCell.textContent;
-  nameCell.contentEditable = "true";
-  nameCell.classList.add("editing");
-  nameCell.focus();
-
-  const selection = window.getSelection();
-  const range = document.createRange();
-  range.selectNodeContents(nameCell);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
-function finishEditing(nameCell) {
-  nameCell.contentEditable = "false";
-  nameCell.classList.remove("editing");
-
-  const cleaned = nameCell.textContent.trim();
-
-  if (cleaned === "") {
-    nameCell.textContent = nameCell.dataset.originalValue || "(untitled)";
-  } else {
-    nameCell.textContent = cleaned;
-  }
-
-  saveTracks();
-}
-
-function cancelEditing(nameCell, fallbackName) {
-  nameCell.textContent = nameCell.dataset.originalValue || fallbackName;
-  nameCell.contentEditable = "false";
-  nameCell.classList.remove("editing");
-}
-
-function setupDragEvents(trackRow) {
-  trackRow.addEventListener("dragstart", () => {
-    draggedRow = trackRow;
-    trackRow.classList.add("dragging");
-  });
-
-  trackRow.addEventListener("dragend", () => {
-    trackRow.classList.remove("dragging");
-    draggedRow = null;
-    saveTracks();
-  });
-
-  trackRow.addEventListener("dragover", (event) => {
-    event.preventDefault();
-  });
-
-  trackRow.addEventListener("drop", (event) => {
-    event.preventDefault();
-    if (!draggedRow || draggedRow === trackRow) return;
-
-    const rows = [...queue.querySelectorAll(".track-row")];
-    const draggedIndex = rows.indexOf(draggedRow);
-    const targetIndex = rows.indexOf(trackRow);
-
-    if (draggedIndex < targetIndex) {
-      queue.insertBefore(draggedRow, trackRow.nextSibling);
-    } else {
-      queue.insertBefore(draggedRow, trackRow);
-    }
-  });
 }
 
 function saveTracks() {
-  const trackRows = queue.querySelectorAll(".track-row");
-  const tracks = [];
-
-  trackRows.forEach((row) => {
-    tracks.push({
-      date: row.children[1].textContent,
-      time: row.children[2].textContent,
-      name: row.children[3].textContent
-    });
-  });
-
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tracks));
 }
 
 function addTrack() {
-  const trackName = trackInput.value.trim();
-  if (trackName === "") return;
+  const name = trackInput.value.trim();
+  if (!name) return;
 
-  const date = getCurrentDate();
-  const time = getCurrentTime();
+  tracks.unshift({
+    id: crypto.randomUUID(),
+    name,
+    createdAt: new Date().toISOString()
+  });
 
-  createTrackRow(date, time, trackName);
   saveTracks();
-
+  renderTracks();
   trackInput.value = "";
 }
 
-function getCurrentDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+function getDayKey(track) {
+  const d = new Date(track.createdAt);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthKey(track) {
+  const d = new Date(track.createdAt);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function formatDay(track) {
+  const d = new Date(track.createdAt);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const year = String(d.getFullYear()).slice(-2);
   return `${month}.${day}.${year}`;
 }
 
-function getCurrentTime() {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
+function formatTime(track) {
+  const d = new Date(track.createdAt);
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
-trackInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
+function formatMonthLabel(monthKey) {
+  const [year, month] = monthKey.split("-");
+  return `${Number(month)}.${String(year).slice(-2)}`;
+}
+
+function groupTracksByDay() {
+  const grouped = {};
+
+  tracks.forEach((track) => {
+    const key = getDayKey(track);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(track);
+  });
+
+  return grouped;
+}
+
+function renderTracks() {
+  queue.innerHTML = "";
+  monthTimeline.innerHTML = "";
+  totalCount.textContent = tracks.length;
+
+  if (tracks.length === 0) return;
+
+  const grouped = groupTracksByDay();
+  const sortedDayKeys = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+
+  sortedDayKeys.forEach((dayKey) => {
+    const dayTracks = grouped[dayKey];
+
+    const dayGroup = document.createElement("div");
+    dayGroup.className = "day-group";
+    dayGroup.id = `day-${dayKey}`;
+
+    const header = document.createElement("div");
+    header.className = "day-header";
+
+    const label = document.createElement("div");
+    label.className = "day-label";
+    label.textContent = `${formatDay(dayTracks[0])} (${dayTracks.length})`;
+
+    header.appendChild(label);
+    dayGroup.appendChild(header);
+
+    dayTracks.forEach((track) => {
+      dayGroup.appendChild(createRow(track));
+    });
+
+    queue.appendChild(dayGroup);
+  });
+
+  renderMonthTimeline(sortedDayKeys, grouped);
+}
+
+function renderMonthTimeline(sortedDayKeys, grouped) {
+  const seenMonths = new Set();
+
+  sortedDayKeys.forEach((dayKey) => {
+    const firstTrack = grouped[dayKey][0];
+    const monthKey = getMonthKey(firstTrack);
+
+    if (seenMonths.has(monthKey)) return;
+    seenMonths.add(monthKey);
+
+    const monthItem = document.createElement("button");
+    monthItem.className = "month-link";
+    monthItem.textContent = formatMonthLabel(monthKey);
+
+    monthItem.addEventListener("click", () => {
+      const firstDayInMonth = sortedDayKeys.find((key) => key.startsWith(monthKey));
+      const target = document.getElementById(`day-${firstDayInMonth}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+
+    monthTimeline.appendChild(monthItem);
+  });
+}
+
+function createRow(track) {
+  const row = document.createElement("div");
+  row.className = "track-row";
+  row.draggable = true;
+  row.dataset.id = track.id;
+
+  const drag = document.createElement("button");
+  drag.className = "drag-handle";
+  drag.type = "button";
+  drag.textContent = "☰";
+
+  const date = document.createElement("div");
+  date.className = "track-cell";
+  date.textContent = formatDay(track);
+
+  const time = document.createElement("div");
+  time.className = "track-cell";
+  time.textContent = formatTime(track);
+
+  const name = document.createElement("div");
+  name.className = "track-cell name-cell";
+  name.textContent = track.name;
+
+  name.addEventListener("click", () => {
+    if (name.isContentEditable) return;
+
+    if (xKeyHeld) {
+      startEditing(name);
+      return;
+    }
+
+    const q = encodeURIComponent(name.textContent);
+    window.open(`https://www.youtube.com/results?search_query=${q}`, "_blank");
+
+    tracks = tracks.filter((t) => t.id !== track.id);
+    saveTracks();
+    renderTracks();
+  });
+
+  name.addEventListener("blur", () => {
+    if (!name.isContentEditable) return;
+
+    name.contentEditable = "false";
+    name.classList.remove("editing");
+
+    const cleaned = name.textContent.trim() || track.name;
+    const found = tracks.find((t) => t.id === track.id);
+
+    if (found) {
+      found.name = cleaned;
+      saveTracks();
+    }
+  });
+
+  name.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      name.blur();
+    }
+  });
+
+  const del = document.createElement("button");
+  del.className = "delete-btn";
+  del.type = "button";
+  del.textContent = "X";
+  del.addEventListener("click", () => {
+    tracks = tracks.filter((t) => t.id !== track.id);
+    saveTracks();
+    renderTracks();
+  });
+
+  setupDrag(row);
+
+  row.append(drag, date, time, name, del);
+  return row;
+}
+
+function startEditing(el) {
+  el.contentEditable = "true";
+  el.classList.add("editing");
+  el.focus();
+
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function setupDrag(row) {
+  row.addEventListener("dragstart", () => {
+    draggedTrackId = row.dataset.id;
+    row.classList.add("dragging");
+  });
+
+  row.addEventListener("dragend", () => {
+    draggedTrackId = null;
+    row.classList.remove("dragging");
+  });
+
+  row.addEventListener("dragover", (e) => {
+    e.preventDefault();
+  });
+
+  row.addEventListener("drop", () => {
+    const targetId = row.dataset.id;
+
+    const fromIndex = tracks.findIndex((t) => t.id === draggedTrackId);
+    const toIndex = tracks.findIndex((t) => t.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    const [moved] = tracks.splice(fromIndex, 1);
+    tracks.splice(toIndex, 0, moved);
+
+    saveTracks();
+    renderTracks();
+  });
+}
+
+trackInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
     addTrack();
   }
 });
 
-document.addEventListener("keydown", (event) => {
-  if (event.key.toLowerCase() === "x") {
+document.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "x") {
     xKeyHeld = true;
   }
 });
 
-document.addEventListener("keyup", (event) => {
-  if (event.key.toLowerCase() === "x") {
+document.addEventListener("keyup", (e) => {
+  if (e.key.toLowerCase() === "x") {
     xKeyHeld = false;
   }
 });
@@ -226,6 +308,4 @@ window.addEventListener("blur", () => {
   xKeyHeld = false;
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  loadTracks();
-});
+document.addEventListener("DOMContentLoaded", loadTracks);
