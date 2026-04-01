@@ -81,7 +81,8 @@ function formatTime(track) {
   const d = new Date(track.createdAt);
   const hours = String(d.getHours()).padStart(2, "0");
   const minutes = String(d.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 function formatMonthLabel(monthKey) {
