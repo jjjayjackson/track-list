@@ -43,7 +43,7 @@ function addTrack() {
   const name = trackInput.value.trim();
   if (!name) return;
 
-  tracks.unshift({
+  tracks.push({
     id: crypto.randomUUID(),
     name,
     createdAt: new Date().toISOString()
