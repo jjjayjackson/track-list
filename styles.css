@@ -39,10 +39,6 @@ body {
   gap: 10px;
 }
 
-.day-header {
-  padding: 0 4px;
-}
-
 .day-label {
   font-size: 1rem;
 }
@@ -54,7 +50,7 @@ body {
   grid-template-columns: 42px 1fr 1fr 3fr 50px;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 0 14px;
   border: 1px solid #2a3139;
   border-radius: 14px;
   overflow: hidden;
@@ -75,7 +71,6 @@ body {
   border: none;
   font-size: 1.1rem;
   cursor: grab;
-  display: flex;
   align-items: center;
   justify-content: center;
 }
